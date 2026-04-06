@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CandyFlyGame — Защищённая версия с общим лидербордом</title>
+    <title>CandyFlyGame — Рабочая версия</title>
     <style>
         * {
             margin: 0;
@@ -158,8 +158,8 @@
         <div class="content-area">
             <div id="mainPanel">
                 <div class="photo-area">
-                    <img class="main-photo" id="mainPhoto" src="">
-                    <div class="photo-name" id="photoName"></div>
+                    <img class="main-photo" id="mainPhoto" src="https://i.postimg.cc/L6vdcMV7/3a4db1f2-174b-40fc-901d-5dc1cc98ea09-001.png">
+                    <div class="photo-name" id="photoName">✨ Флай в заколдованном лесу</div>
                     <div class="click-hint">👇 нажми на кнопку 👇</div>
                 </div>
                 <div class="button-zone">
@@ -213,10 +213,10 @@
 </div>
 
 <script>
-    // ========== ТВОИ КЛЮЧИ SUPABASE (уже вставлены) ==========
+    // ========== КЛЮЧИ SUPABASE (ТВОИ) ==========
     const SUPABASE_URL = "https://hpjhdvscofevsjcslify.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwamhkdnNjb2ZldnNqY3NsaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzQ3MDMsImV4cCI6MjA5MTA1MDcwM30.CqrN2uLYBfUoqJIMC4xP9TA4JRKmvCFa6tl1aOWkZGA";
-    // =======================================================
+    // ============================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -233,7 +233,6 @@
         { min: 25000001, max: 999999999, name: "🌑 Мрачная Флай", bgClass: "dark", img: "https://i.postimg.cc/rF5kjFgn/67e5ac62-262b-4ef5-b896-b5167d19071b.png" }
     ];
 
-    // Данные магазина
     const CLICK_UPGRADES = [
         { name: "+1 очко за клик", price: 1, bonus: 1 },
         { name: "+5 очков за клик", price: 5, bonus: 5 },
@@ -261,7 +260,6 @@
     let lastClickTime = 0;
     let activeMultipliers = [];
 
-    // Хеш пароля
     async function hashPassword(pass) {
         const encoder = new TextEncoder();
         const data = encoder.encode(pass);
@@ -281,11 +279,10 @@
         return `${h}ч ${m}м ${s}с`;
     }
 
-    // Лидерборд (общий)
     async function loadLeaderboard() {
         const { data, error } = await supabase
             .from('users')
-            .select('username, score, click_bonus, auto_income, cooldown_level')
+            .select('username, score')
             .neq('username', 'CashiFly')
             .order('score', { ascending: false })
             .limit(100);
@@ -293,7 +290,6 @@
         const lbDiv = document.getElementById('leaderboardList');
         lbDiv.innerHTML = '';
         data.forEach((p, idx) => {
-            const autoCount = p.auto_income ? p.auto_income.length : 0;
             let zone = "✨ Лес";
             if (p.score >= 25000001) zone = "🌑 Мрачная";
             else if (p.score >= 4000001) zone = "🔴 Марс";
@@ -303,7 +299,7 @@
             else if (p.score >= 401) zone = "🏰 Замок";
             else if (p.score >= 51) zone = "🍬 Сладости";
             else if (p.score >= 11) zone = "🚀 Космос";
-            lbDiv.innerHTML += `<div class="leaderboard-entry"><div class="rank">${idx+1}</div><div class="lb-name">${p.username}</div><div class="lb-zone">${zone}</div><div class="lb-score">🍬 ${p.score}</div><div class="lb-income">🤖 +${autoCount*10}</div></div>`;
+            lbDiv.innerHTML += `<div class="leaderboard-entry"><div class="rank">${idx+1}</div><div class="lb-name">${p.username}</div><div class="lb-zone">${zone}</div><div class="lb-score">🍬 ${p.score}</div><div class="lb-income">🤖 +0</div></div>`;
         });
     }
 
@@ -391,7 +387,6 @@
         return Math.max(0.5, cd);
     }
 
-    // Основные действия с серверной проверкой
     async function performClick() {
         if (!canClick || !userData) return;
         const now = Date.now();
@@ -454,14 +449,16 @@
         updateUI();
     }
 
-    // Регистрация и вход
     async function register() {
         const username = document.getElementById('authUser').value.trim();
         const password = document.getElementById('authPass').value.trim();
         if (!username || !password) { document.getElementById('authMsg').innerText = 'Заполни всё!'; return; }
         const hash = await hashPassword(password);
         const { error } = await supabase.from('users').insert([{ username, password_hash: hash, score: 0, fly_coins: 0 }]);
-        if (error) { document.getElementById('authMsg').innerText = 'Ник занят или ошибка'; return; }
+        if (error) { 
+            document.getElementById('authMsg').innerText = 'Ник занят или ошибка: ' + error.message;
+            return;
+        }
         document.getElementById('authMsg').innerText = '✅ Аккаунт создан! Войди.';
     }
 
@@ -471,7 +468,10 @@
         if (!username || !password) { document.getElementById('authMsg').innerText = 'Введи данные'; return; }
         const hash = await hashPassword(password);
         const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password_hash', hash).single();
-        if (error || !data) { document.getElementById('authMsg').innerText = 'Неверный логин/пароль'; return; }
+        if (error || !data) { 
+            document.getElementById('authMsg').innerText = 'Неверный логин/пароль';
+            return;
+        }
         currentUser = username;
         userData = data;
         document.getElementById('authScreen').style.display = 'none';
