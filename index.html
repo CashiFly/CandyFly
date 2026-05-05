@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>CandyFlyGame — Вход работает</title>
+    <title>CandyFlyGame</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -36,6 +36,11 @@
             cursor: pointer;
         }
         .hidden { display: none; }
+        #clickBtn {
+            background: #ffaa44;
+            font-size: 20px;
+            padding: 15px;
+        }
     </style>
 </head>
 <body>
@@ -58,13 +63,12 @@
 </div>
 
 <script>
-    // ========== ТВОИ КЛЮЧИ SUPABASE ==========
-    const SUPABASE_URL = "https://hpjhdvscofevsjcslify.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwamhkdnNjb2ZldnNqY3NsaWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzQ3MDMsImV4cCI6MjA5MTA1MDcwM30.CqrN2uLYBfUoqJIMC4xP9TA4JRKmvCFa6tl1aOWkZGA";
-    // =========================================
+    // ========== ТВОИ КЛЮЧИ SUPABASE (УЖЕ ВСТАВЛЕНЫ) ==========
+    const SUPABASE_URL = "https://nobnpzhwfdbrbvyffimz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vYm5wemh3ZmRicmJ2eWZmaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5ODEwODYsImV4cCI6MjA5MzU1NzA4Nn0.W9mcEOZV4XcH8s4Px1uafTvVP0cQVTdQ5i4nMYIL4YE";
+    // =========================================================
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     let currentUser = null;
 
     async function hashPassword(pass) {
@@ -77,33 +81,60 @@
     document.getElementById('registerBtn').onclick = async () => {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value.trim();
+        
         if (!username || !password) {
             document.getElementById('message').innerText = 'Заполни все поля';
             return;
         }
+        
         const hash = await hashPassword(password);
-        const { error } = await supabase.from('users').insert([{ username, password_hash: hash, score: 0, fly_coins: 0 }]);
+        
+        const { error } = await supabase
+            .from('users')
+            .insert([{ 
+                username: username, 
+                password_hash: hash, 
+                score: 0, 
+                fly_coins: 0 
+            }]);
+        
         if (error) {
-            document.getElementById('message').innerText = 'Ошибка: ' + error.message;
+            if (error.message.includes('duplicate')) {
+                document.getElementById('message').innerText = '❌ Такой ник уже есть';
+            } else {
+                document.getElementById('message').innerText = '❌ Ошибка: ' + error.message;
+            }
         } else {
             document.getElementById('message').innerText = '✅ Аккаунт создан! Теперь войдите.';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
         }
     };
 
     document.getElementById('loginBtn').onclick = async () => {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value.trim();
+        
         if (!username || !password) {
             document.getElementById('message').innerText = 'Введи данные';
             return;
         }
+        
         const hash = await hashPassword(password);
-        const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password_hash', hash).single();
-        if (error || !data) {
-            document.getElementById('message').innerText = 'Неверный логин или пароль';
+        
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .eq('password_hash', hash);
+        
+        if (error || !data || data.length === 0) {
+            document.getElementById('message').innerText = '❌ Неверный логин или пароль';
             return;
         }
-        currentUser = data;
+        
+        currentUser = data[0];
+        
         document.getElementById('authScreen').classList.add('hidden');
         document.getElementById('gameScreen').classList.remove('hidden');
         document.getElementById('userName').innerText = currentUser.username;
@@ -113,14 +144,25 @@
 
     document.getElementById('clickBtn').onclick = async () => {
         if (!currentUser) return;
+        
         const newScore = currentUser.score + 1;
         const newCoins = Math.floor(newScore / 10);
-        const { error } = await supabase.from('users').update({ score: newScore, fly_coins: newCoins }).eq('id', currentUser.id);
+        
+        const { error } = await supabase
+            .from('users')
+            .update({ 
+                score: newScore, 
+                fly_coins: newCoins 
+            })
+            .eq('id', currentUser.id);
+        
         if (!error) {
             currentUser.score = newScore;
             currentUser.fly_coins = newCoins;
             document.getElementById('score').innerText = newScore;
             document.getElementById('coins').innerText = newCoins;
+        } else {
+            console.error('Ошибка сохранения:', error);
         }
     };
 
